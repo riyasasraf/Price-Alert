@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Multi-Product Price Tracker</title>
+    <!-- Load Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap');
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f7fafc;
+        }
+        .table-row-alert {
+            animation: pulse-low-price 1.5s infinite alternate;
+        }
+        @keyframes pulse-low-price {
+            from { background-color: #fefcbf; }
+            to { background-color: #f6e05e; }
+        }
+    </style>
+</head>
+<body class="p-4 md:p-8">
+
+    <div class="max-w-4xl mx-auto">
+        <header class="mb-8 text-center">
+            <h1 class="text-4xl font-bold text-gray-800">🛒 Price Tracker Dashboard</h1>
+            <p class="text-gray-500 mt-2">Monitoring {{ products | length }} product(s) for price drops. Checks every 30 minutes.</p>
+        </header>
+
+        <!-- Product Addition Form -->
+        <div class="bg-white p-6 rounded-xl shadow-lg mb-8">
+            <h2 class="text-2xl font-semibold mb-4 text-gray-700">Add New Product to Track</h2>
+            <form action="{{ url_for('add_product') }}" method="POST" class="flex flex-col md:flex-row gap-4">
+                <input type="url" name="url" placeholder="Paste Amazon.in product URL here" required 
+                       class="flex-grow p-3 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500 text-gray-800"
+                       aria-label="Product URL Input">
+                <button type="submit" 
+                        class="bg-green-600 hover:bg-green-700 text-white font-bold py-3 px-6 rounded-lg shadow-md transition duration-300">
+                    Start Tracking
+                </button>
+            </form>
+        </div>
+
+        <!-- Product List Table -->
+        <h2 class="text-2xl font-semibold mb-4 text-gray-700">Tracked Products</h2>
+        
+        {% if products %}
+            <div class="overflow-x-auto bg-white rounded-xl shadow-lg">
+                <table class="min-w-full divide-y divide-gray-200">
+                    <thead class="bg-gray-50">
+                        <tr>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Product Name</th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Current Price</th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Lowest Price</th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Last Checked</th>
+                            <th class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody class="divide-y divide-gray-200">
+                        {% for product in products %}
+                            {% set is_lowest = product.current_price and product.current_price == product.lowest_price %}
+                            <tr class="{% if is_lowest %}table-row-alert{% else %}hover:bg-gray-50{% endif %} transition duration-150 ease-in-out">
+                                <!-- Product Name -->
+                                <td class="px-6 py-4 whitespace-nowrap">
+                                    <a href="{{ product.url }}" target="_blank" class="text-sm font-medium text-blue-600 hover:text-blue-800 truncate block max-w-xs">
+                                        {{ product.product_name }}
+                                    </a>
+                                </td>
+                                <!-- Current Price -->
+                                <td class="px-6 py-4 whitespace-nowrap text-sm
+                                    {% if product.current_price and product.current_price < product.lowest_price %} 
+                                        font-bold text-green-600
+                                    {% elif is_lowest %}
+                                        font-bold text-red-600
+                                    {% else %} 
+                                        text-gray-900
+                                    {% endif %}">
+                                    {% if product.current_price is none %}
+                                        N/A
+                                    {% else %}
+                                        ₹{{ "%.2f"|format(product.current_price) }}
+                                    {% endif %}
+                                </td>
+                                <!-- Lowest Price -->
+                                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-700">
+                                    {% if product.lowest_price is none %}
+                                        N/A
+                                    {% else %}
+                                        ₹{{ "%.2f"|format(product.lowest_price) }}
+                                    {% endif %}
+                                </td>
+                                <!-- Last Checked -->
+                                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                                    {{ product.last_check or 'Never' }}
+                                </td>
+                                <!-- Actions -->
+                                <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                                    <form action="{{ url_for('delete_product', product_id=product.id) }}" method="POST" class="inline">
+                                        <button type="submit" 
+                                                class="text-red-600 hover:text-red-900 transition duration-150"
+                                                onclick="return confirm('Are you sure you want to stop tracking {{ product.product_name | truncate(30, True) }}?');">
+                                            Delete
+                                        </button>
+                                    </form>
+                                </td>
+                            </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        {% else %}
+            <div class="text-center py-10 bg-white rounded-xl shadow-lg">
+                <p class="text-gray-500">No products are currently being tracked. Add a URL above to begin monitoring!</p>
+            </div>
+        {% endif %}
+
+    </div>
+
+</body>
+</html>
